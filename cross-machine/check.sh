@@ -240,6 +240,11 @@ elif [ "${TCP_PORT}" = "${HAPROXY_TCP_PORT}" ]; then
     echo "    ❌ FAIL: 端口 ${TCP_PORT} 是 HAProxy TCP 代理端口"
     echo "       -> Proxy Protocol v2 未生效"
     FAIL=$((FAIL + 1))
+elif [ "${TCP_PORT}" = "${NODE_A_LISTEN_PORT}" ]; then
+    echo "    ⚠️  端口 ${TCP_PORT} 是节点 A 的 P2P 监听端口（identify 协议上报）"
+    echo "       -> 非 HAProxy 代理端口，说明 Proxy Protocol v2 已生效"
+    echo "       -> 但 CKB identify 协议用监听端口覆盖了真实源端口，属于正常行为"
+    PASS=$((PASS + 1))
 else
     echo "    ✅ PASS: 端口 ${TCP_PORT} 是随机源端口（非 ${HAPROXY_TCP_PORT}）"
     echo "       -> Proxy Protocol v2 正确传递了客户端真实源端口"
