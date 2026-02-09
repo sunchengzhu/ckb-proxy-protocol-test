@@ -85,7 +85,7 @@ defaults
 
 # TCP 代理 - PROXY Protocol v2
 frontend tcp_proxy
-    bind *:18115
+    bind *:8220
     default_backend tcp_backend
 
 backend tcp_backend
@@ -93,7 +93,7 @@ backend tcp_backend
 
 # WebSocket 代理 - X-Forwarded-For + X-Forwarded-Port
 frontend ws_proxy
-    bind *:18080
+    bind *:8221
     mode http
     default_backend ws_backend
 
@@ -113,7 +113,7 @@ echo "=========================================="
 echo ""
 echo "  节点 B: P2P=8115  RPC=0.0.0.0:8114"
 echo "  peer_id: ${NODE_B_PEER_ID}"
-echo "  HAProxy: TCP=18115 (proxy-v2)  WS=18080 (X-Fwd-For/Port)"
+echo "  HAProxy: TCP=8220 (proxy-v2)  WS=8221 (X-Fwd-For/Port)"
 echo ""
 echo "  ⚠️  请将 peer_id 传递给客户端机器:"
 echo "     echo '${NODE_B_PEER_ID}' > .node_b_peer_id"

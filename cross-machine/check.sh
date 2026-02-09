@@ -47,8 +47,8 @@ FAIL=0
 # 端口常量
 NODE_A_LISTEN_PORT=8116
 NODE_C_LISTEN_PORT=8117
-HAPROXY_TCP_PORT=18115
-HAPROXY_WS_PORT=18080
+HAPROXY_TCP_PORT=8220
+HAPROXY_WS_PORT=8221
 
 # RPC 地址
 NODE_B_RPC="http://${SERVER_IP}:8114"
@@ -103,7 +103,7 @@ else
     FAIL=$((FAIL + 1))
     echo "  可能原因:"
     echo "    - 服务端 HAProxy 未运行"
-    echo "    - 防火墙未放行 18115/18080 端口"
+    echo "    - 防火墙未放行 8220/8221 端口"
     echo "    - 客户端节点未启动"
 fi
 
@@ -288,12 +288,12 @@ echo " 检查 6: WS 路径 — X-Forwarded-Port (端口)"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-# 获取节点 C 连接服务端 HAProxy :18080 的实际源端口
+# 获取节点 C 连接服务端 HAProxy :8221 的实际源端口
 NODE_C_REAL_PORT=""
 NODE_C_PID_FILE="${CLIENT_DIR}/.node_c_pid"
 if [ -f "${NODE_C_PID_FILE}" ]; then
     NODE_C_PID=$(cat "${NODE_C_PID_FILE}")
-    # Linux: 用 ss 查找节点 C 到 SERVER_IP:18080 的连接
+    # Linux: 用 ss 查找节点 C 到 SERVER_IP:8221 的连接
     NODE_C_REAL_PORT=$(ss -tnp 2>/dev/null \
         | grep "pid=${NODE_C_PID}," \
         | grep "${SERVER_IP}:${HAPROXY_WS_PORT}" \

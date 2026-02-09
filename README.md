@@ -109,6 +109,12 @@ rm -rf node_a node_b node_c node_a.log node_b.log node_c.log miner.log .node_* .
 - **同机测试**: IP 为 `127.0.0.1`（直连）或 `192.168.65.1`（Docker 网关），关注端口号即可
 - **跨机测试**: 节点 B 看到的 IP 应该是客户端机器的真实 IP
 
+## 跨机测试
+
+如果需要在**两台机器**（如 AWS EC2）上进行跨机测试，请参考 [cross-machine/README.md](cross-machine/README.md)。
+
+跨机测试的 HAProxy 代理端口使用 **8220** (TCP) 和 **8221** (WS)，与同机测试不同。
+
 ## check.sh 输出示例
 
 ```
