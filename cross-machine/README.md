@@ -12,9 +12,9 @@
 ```
   客户端机器 (CLIENT_IP)            服务端机器 (SERVER_IP)
   +---------------------+          +---------------------------+
-  | 节点 A (TCP, P2P:8116)  ----TCP---->| HAProxy :8220             |
+  | 节点 A (TCP, P2P:8116)  ----TCP---->| HAProxy :8230             |
   |                     |          |   send-proxy-v2 -> :8115  |
-  | 节点 C (WS,  P2P:8117)  ----WS---->| HAProxy :8221             |-->  节点 B
+  | 节点 C (WS,  P2P:8117)  ----WS---->| HAProxy :8231             |-->  节点 B
   |                     |          |   X-Fwd-For/Port -> :8115 |    P2P:8115
   +---------------------+          +---------------------------+    RPC:8114
 ```
@@ -29,7 +29,7 @@
 - HAProxy: `sudo apt update && sudo apt install -y haproxy`
 
 **网络要求:**
-- 客户端能访问服务端的 **8114** (RPC)、**8220** (TCP 代理)、**8221** (WS 代理) 端口
+- 客户端能访问服务端的 **8114** (RPC)、**8230** (TCP 代理)、**8231** (WS 代理) 端口
 - 如有防火墙 / AWS Security Group，需放行这三个端口
 
 ## 端口分配
@@ -38,8 +38,8 @@
 |------|---------|------|------|
 | 节点 B (P2P) | 服务端 | 8115 | 接收代理连接 |
 | 节点 B (RPC) | 服务端 | 8114 | 监听 0.0.0.0，远程可访问 |
-| HAProxy TCP | 服务端 | 8220 | send-proxy-v2 -> :8115 |
-| HAProxy WS | 服务端 | 8221 | X-Forwarded-For/Port -> :8115 |
+| HAProxy TCP | 服务端 | 8230 | send-proxy-v2 -> :8115 |
+| HAProxy WS | 服务端 | 8231 | X-Forwarded-For/Port -> :8115 |
 | 节点 A (P2P) | 客户端 | 8116 | TCP 客户端 |
 | 节点 A (RPC) | 客户端 | 8124 | 本地 RPC |
 | 节点 C (P2P) | 客户端 | 8117 | WS 客户端 |
@@ -129,7 +129,7 @@ cd cross-machine/server && bash stop.sh
 | 检查 1 | peer 连接 | 节点 B 有至少 2 个 peer |
 | 检查 3 | 区块同步 | 三个节点 tip 一致 |
 | 检查 4a | TCP IP | 节点 B 看到客户端真实 IP (Proxy Protocol v2) |
-| 检查 4b | TCP 端口 | 端口非 HAProxy 代理端口 8220 |
+| 检查 4b | TCP 端口 | 端口非 HAProxy 代理端口 8230 |
 | 检查 5 | WS IP | 节点 B 看到客户端真实 IP (X-Forwarded-For) |
 | 检查 6 | WS 端口 | 节点 C 源端口 == 节点 B 看到的端口 (X-Forwarded-Port) |
 | 检查 7 | IP 一致性 | TCP 和 WS 路径看到的客户端 IP 相同 |
@@ -153,7 +153,7 @@ CKB Proxy Protocol 跨机测试检查
   [4a] Proxy Protocol v2 — IP 传递:
     ✅ PASS: IP=10.0.1.200 是客户端机器的真实 IP
   [4b] Proxy Protocol v2 — 端口传递:
-    ✅ PASS: 端口 45678 是随机源端口（非 8220）
+    ✅ PASS: 端口 45678 是随机源端口（非 8230）
 
 检查 5: WS 路径 — X-Forwarded-For (IP)
   ✅ PASS: IP=10.0.1.200 是客户端机器的真实 IP

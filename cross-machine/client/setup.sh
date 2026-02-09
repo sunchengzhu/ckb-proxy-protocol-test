@@ -71,7 +71,7 @@ ${CKB_BIN} init -c dev --p2p-port 8116 --rpc-port 8124 --force 2>&1 | tail -3 ||
 rm -rf "${BASE_DIR}/node_a/data"
 
 # bootnode 指向服务端 HAProxy TCP 端口
-sed -i "s|^bootnodes = .*|bootnodes = [\"/ip4/${SERVER_IP}/tcp/8220/p2p/${NODE_B_PEER_ID}\"]|" ckb.toml
+sed -i "s|^bootnodes = .*|bootnodes = [\"/ip4/${SERVER_IP}/tcp/8230/p2p/${NODE_B_PEER_ID}\"]|" ckb.toml
 
 # --- 初始化节点 C (WS 客户端) ---
 echo ""
@@ -83,7 +83,7 @@ ${CKB_BIN} init -c dev --p2p-port 8117 --rpc-port 8134 --force 2>&1 | tail -3 ||
 rm -rf "${BASE_DIR}/node_c/data"
 
 # bootnode 指向服务端 HAProxy WS 端口
-sed -i "s|^bootnodes = .*|bootnodes = [\"/ip4/${SERVER_IP}/tcp/8221/ws/p2p/${NODE_B_PEER_ID}\"]|" ckb.toml
+sed -i "s|^bootnodes = .*|bootnodes = [\"/ip4/${SERVER_IP}/tcp/8231/ws/p2p/${NODE_B_PEER_ID}\"]|" ckb.toml
 
 # 确保两个客户端与服务端使用相同的 genesis (需从服务端复制 dev.toml)
 DEV_TOML_SRC="${BASE_DIR}/.dev.toml"
@@ -106,9 +106,9 @@ echo " 客户端初始化完成！"
 echo "=========================================="
 echo ""
 echo "  节点 A (TCP): P2P=8116  RPC=8124"
-echo "    bootnode: TCP -> ${SERVER_IP}:8220 (Proxy Protocol v2)"
+echo "    bootnode: TCP -> ${SERVER_IP}:8230 (Proxy Protocol v2)"
 echo ""
 echo "  节点 C (WS):  P2P=8117  RPC=8134"
-echo "    bootnode: WS  -> ${SERVER_IP}:8221 (X-Forwarded-For/Port)"
+echo "    bootnode: WS  -> ${SERVER_IP}:8231 (X-Forwarded-For/Port)"
 echo ""
 echo "  下一步: bash start.sh"

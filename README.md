@@ -113,7 +113,7 @@ rm -rf node_a node_b node_c node_a.log node_b.log node_c.log miner.log .node_* .
 
 如果需要在**两台机器**（如 AWS EC2）上进行跨机测试，请参考 [cross-machine/README.md](cross-machine/README.md)。
 
-跨机测试的 HAProxy 代理端口使用 **8220** (TCP) 和 **8221** (WS)，与同机测试不同。
+跨机测试的 HAProxy 代理端口使用 **8230** (TCP) 和 **8231** (WS)，与同机测试不同。
 
 ## check.sh 输出示例
 
