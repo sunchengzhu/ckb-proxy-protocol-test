@@ -44,7 +44,7 @@ echo ""
 # 使用 dev chain 测试用 lock arg 初始化（需要 --ba-arg 才能启用 Miner RPC）
 DEV_BA_ARG="0xc8328aabcd9b9e8e64fbc566c4385c3bdeb219d7"
 
-echo "[1/2] 初始化节点 B (服务端) ..."
+echo "[1/3] 初始化节点 B (服务端) ..."
 rm -rf "${BASE_DIR}/node_b"
 mkdir -p "${BASE_DIR}/node_b"
 cd "${BASE_DIR}/node_b"
@@ -71,28 +71,40 @@ echo "  节点 B peer_id: ${NODE_B_PEER_ID}"
 
 # --- 初始化节点 A-TCP (通过 TCP 代理连接) ---
 echo ""
-echo "[2/2] 初始化节点 A (客户端) ..."
+echo "[2/3] 初始化节点 A (TCP 客户端) ..."
 rm -rf "${BASE_DIR}/node_a"
 mkdir -p "${BASE_DIR}/node_a"
 cd "${BASE_DIR}/node_a"
 ${CKB_BIN} init -c dev --p2p-port 8116 --rpc-port 8124 --force 2>&1 | tail -3 || true
 
-# 确保节点 A 使用与节点 B 相同的链规格（同一 genesis）
-# 必须先拷贝 dev.toml 再删 data，因为 ckb init 已基于自己的随机 dev.toml 生成了 db
 cp "${BASE_DIR}/node_b/specs/dev.toml" "${BASE_DIR}/node_a/specs/dev.toml"
 rm -rf "${BASE_DIR}/node_a/data"
 
-# 修改 node_a 的 bootnodes，两个地址：一个走 TCP 代理，一个走 WS 代理
+# 节点 A 只走 TCP 代理 (HAProxy :18115 -> :8115, send-proxy-v2)
 cd "${BASE_DIR}/node_a"
-
-# 用 sed 替换 bootnodes 行
-# TCP 代理端口: 18115
-# WS 代理端口: 18080
-# 替换 bootnodes 为指向代理的地址
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    sed -i '' "s|^bootnodes = .*|bootnodes = [\"/ip4/127.0.0.1/tcp/18115/p2p/${NODE_B_PEER_ID}\", \"/ip4/127.0.0.1/tcp/18080/ws/p2p/${NODE_B_PEER_ID}\"]|" ckb.toml
+    sed -i '' "s|^bootnodes = .*|bootnodes = [\"/ip4/127.0.0.1/tcp/18115/p2p/${NODE_B_PEER_ID}\"]|" ckb.toml
 else
-    sed -i "s|^bootnodes = .*|bootnodes = [\"/ip4/127.0.0.1/tcp/18115/p2p/${NODE_B_PEER_ID}\", \"/ip4/127.0.0.1/tcp/18080/ws/p2p/${NODE_B_PEER_ID}\"]|" ckb.toml
+    sed -i "s|^bootnodes = .*|bootnodes = [\"/ip4/127.0.0.1/tcp/18115/p2p/${NODE_B_PEER_ID}\"]|" ckb.toml
+fi
+
+# --- 初始化节点 C (WS 客户端，通过 WebSocket 代理连接) ---
+echo ""
+echo "[3/3] 初始化节点 C (WS 客户端) ..."
+rm -rf "${BASE_DIR}/node_c"
+mkdir -p "${BASE_DIR}/node_c"
+cd "${BASE_DIR}/node_c"
+${CKB_BIN} init -c dev --p2p-port 8117 --rpc-port 8134 --force 2>&1 | tail -3 || true
+
+cp "${BASE_DIR}/node_b/specs/dev.toml" "${BASE_DIR}/node_c/specs/dev.toml"
+rm -rf "${BASE_DIR}/node_c/data"
+
+# 节点 C 只走 WS 代理 (HAProxy :18080 -> :8115, X-Forwarded-For)
+cd "${BASE_DIR}/node_c"
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    sed -i '' "s|^bootnodes = .*|bootnodes = [\"/ip4/127.0.0.1/tcp/18080/ws/p2p/${NODE_B_PEER_ID}\"]|" ckb.toml
+else
+    sed -i "s|^bootnodes = .*|bootnodes = [\"/ip4/127.0.0.1/tcp/18080/ws/p2p/${NODE_B_PEER_ID}\"]|" ckb.toml
 fi
 
 # 保存 peer_id 供后续使用
@@ -108,11 +120,14 @@ echo "    - P2P 监听: 8115 (TCP + WS)"
 echo "    - RPC 端口: 8114"
 echo "    - peer_id: ${NODE_B_PEER_ID}"
 echo ""
-echo "  节点 A (客户端): ${BASE_DIR}/node_a"
+echo "  节点 A (TCP 客户端): ${BASE_DIR}/node_a"
 echo "    - P2P 监听: 8116"
 echo "    - RPC 端口: 8124"
-echo "    - bootnodes:"
-echo "      TCP -> 127.0.0.1:18115 (HAProxy) -> 127.0.0.1:8115"
-echo "      WS  -> 127.0.0.1:18080 (HAProxy) -> 127.0.0.1:8115"
+echo "    - bootnode: TCP -> 127.0.0.1:18115 (HAProxy, Proxy Protocol v2)"
+echo ""
+echo "  节点 C (WS 客户端): ${BASE_DIR}/node_c"
+echo "    - P2P 监听: 8117"
+echo "    - RPC 端口: 8134"
+echo "    - bootnode: WS -> 127.0.0.1:18080 (HAProxy, X-Forwarded-For)"
 echo ""
 echo "  下一步: bash start.sh"
