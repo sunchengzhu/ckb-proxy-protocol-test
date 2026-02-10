@@ -38,7 +38,7 @@ echo ""
 echo "[0] 清理残留进程 ..."
 
 # 先用 PID 文件尝试关闭
-for pidfile in "${BASE_DIR}/.node_a_pid" "${BASE_DIR}/.node_b_pid" "${BASE_DIR}/.node_c_pid"; do
+for pidfile in "${BASE_DIR}/.node_a_pid" "${BASE_DIR}/.node_b_pid" "${BASE_DIR}/.node_c_pid" "${BASE_DIR}/.node_d_pid"; do
     if [ -f "${pidfile}" ]; then
         OLD_PID=$(cat "${pidfile}")
         kill "${OLD_PID}" 2>/dev/null || true
@@ -54,7 +54,7 @@ docker rm -f haproxy-ckb-test 2>/dev/null || true
 
 # --- 1. 启动 HAProxy ---
 echo ""
-echo "[1/4] 启动 HAProxy ..."
+echo "[1/5] 启动 HAProxy ..."
 
 # macOS 不支持 --network host，需要端口映射并指向宿主机
 if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -68,6 +68,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     docker run --rm -d \
         --name haproxy-ckb-test \
         -p 18115:18115 \
+        -p 18116:18116 \
         -p 18080:18080 \
         -v "${HAPROXY_CFG}:/usr/local/etc/haproxy/haproxy.cfg:ro" \
         haproxy:alpine
@@ -80,12 +81,13 @@ else
 fi
 
 echo "  HAProxy 已启动"
-echo "    TCP 代理:  127.0.0.1:18115 -> 127.0.0.1:8115"
-echo "    WS  代理:  127.0.0.1:18080 -> 127.0.0.1:8115"
+echo "    TCP 代理 (v2):  127.0.0.1:18115 -> 127.0.0.1:8115"
+echo "    TCP 代理 (v1):  127.0.0.1:18116 -> 127.0.0.1:8115"
+echo "    WS  代理:       127.0.0.1:18080 -> 127.0.0.1:8115"
 
 # --- 2. 启动节点 B ---
 echo ""
-echo "[2/4] 启动节点 B (服务端) ..."
+echo "[2/5] 启动节点 B (服务端) ..."
 cd "${BASE_DIR}/node_b"
 ${CKB_BIN} run > "${BASE_DIR}/node_b.log" 2>&1 &
 NODE_B_PID=$!
@@ -121,7 +123,7 @@ echo "  已出块，节点 B 当前 tip: ${CURRENT_TIP}"
 
 # --- 3. 启动节点 A ---
 echo ""
-echo "[3/4] 启动节点 A (TCP 客户端) ..."
+echo "[3/5] 启动节点 A (TCP/PP v2 客户端) ..."
 cd "${BASE_DIR}/node_a"
 ${CKB_BIN} run > "${BASE_DIR}/node_a.log" 2>&1 &
 NODE_A_PID=$!
@@ -146,7 +148,7 @@ done
 
 # --- 4. 启动节点 C (WS 客户端) ---
 echo ""
-echo "[4/4] 启动节点 C (WS 客户端) ..."
+echo "[4/5] 启动节点 C (WS 客户端) ..."
 cd "${BASE_DIR}/node_c"
 ${CKB_BIN} run > "${BASE_DIR}/node_c.log" 2>&1 &
 NODE_C_PID=$!
@@ -164,6 +166,31 @@ for i in $(seq 1 30); do
     fi
     if [ "$i" -eq 30 ]; then
         echo "  ✗ 节点 C RPC 超时！查看 node_c.log"
+        exit 1
+    fi
+    sleep 1
+done
+
+# --- 5. 启动节点 D (TCP/PP v1 客户端) ---
+echo ""
+echo "[5/5] 启动节点 D (TCP/PP v1 客户端) ..."
+cd "${BASE_DIR}/node_d"
+${CKB_BIN} run > "${BASE_DIR}/node_d.log" 2>&1 &
+NODE_D_PID=$!
+echo "${NODE_D_PID}" > "${BASE_DIR}/.node_d_pid"
+echo "  节点 D PID: ${NODE_D_PID}"
+
+echo "  等待节点 D RPC 就绪 ..."
+for i in $(seq 1 30); do
+    if curl -s -X POST http://127.0.0.1:8144 \
+        -H 'Content-Type: application/json' \
+        -d '{"id":1,"jsonrpc":"2.0","method":"local_node_info","params":[]}' \
+        > /dev/null 2>&1; then
+        echo "  节点 D RPC 就绪 ✓"
+        break
+    fi
+    if [ "$i" -eq 30 ]; then
+        echo "  ✗ 节点 D RPC 超时！查看 node_d.log"
         exit 1
     fi
     sleep 1

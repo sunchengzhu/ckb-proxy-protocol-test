@@ -6,7 +6,7 @@ BASE_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 echo "=========================================="
 echo " CKB Proxy Protocol 测试检查"
-echo " TCP (Proxy Protocol v2) + WS (X-Forwarded-For/Port)"
+echo " TCP (PP v2) + TCP (PP v1) + WS (X-Forwarded-For/Port)"
 echo "=========================================="
 
 PASS=0
@@ -15,7 +15,9 @@ FAIL=0
 # 端口常量
 NODE_A_LISTEN_PORT=8116
 NODE_C_LISTEN_PORT=8117
+NODE_D_LISTEN_PORT=8118
 HAPROXY_TCP_PORT=18115
+HAPROXY_TCP_V1_PORT=18116
 HAPROXY_WS_PORT=18080
 
 # -------------------------------------------
@@ -38,6 +40,11 @@ NODE_C_INFO=$(curl -s -X POST http://127.0.0.1:8134 \
     -d '{"id":1,"jsonrpc":"2.0","method":"local_node_info","params":[]}')
 NODE_C_ID=$(echo "${NODE_C_INFO}" | jq -r '.result.node_id')
 
+NODE_D_INFO=$(curl -s -X POST http://127.0.0.1:8144 \
+    -H 'Content-Type: application/json' \
+    -d '{"id":1,"jsonrpc":"2.0","method":"local_node_info","params":[]}')
+NODE_D_ID=$(echo "${NODE_D_INFO}" | jq -r '.result.node_id')
+
 # -------------------------------------------
 # 检查 1: 节点 B 是否有 2 个 peers（TCP + WS）
 # -------------------------------------------
@@ -45,13 +52,13 @@ echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo " 检查 1: 节点 B 的已连接 peers"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  连接的 peer 数量: ${PEER_COUNT}（期望: 2）"
+echo "  连接的 peer 数量: ${PEER_COUNT}（期望: 3）"
 
-if [ "${PEER_COUNT}" -ge 2 ]; then
-    echo "  ✅ PASS: 有 ${PEER_COUNT} 个 peer 连接 (TCP + WS 两条路径)"
+if [ "${PEER_COUNT}" -ge 3 ]; then
+    echo "  ✅ PASS: 有 ${PEER_COUNT} 个 peer 连接 (TCP/PP v2 + TCP/PP v1 + WS 三条路径)"
     PASS=$((PASS + 1))
-elif [ "${PEER_COUNT}" -eq 1 ]; then
-    echo "  ⚠️  只有 1 个 peer 连接，可能另一个节点还没连上"
+elif [ "${PEER_COUNT}" -ge 1 ]; then
+    echo "  ⚠️  只有 ${PEER_COUNT} 个 peer 连接，可能某个节点还没连上"
     echo "     稍等后重试: sleep 5 && bash check.sh"
     FAIL=$((FAIL + 1))
 else
@@ -71,7 +78,8 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo " 检查 2: Peer 地址解析（区分 TCP / WS 路径）"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "  节点 A node_id: ${NODE_A_ID}  (TCP 客户端, 走 :${HAPROXY_TCP_PORT})"
+echo "  节点 A node_id: ${NODE_A_ID}  (TCP 客户端, 走 :${HAPROXY_TCP_PORT}, PP v2)"
+echo "  节点 D node_id: ${NODE_D_ID}  (TCP 客户端, 走 :${HAPROXY_TCP_V1_PORT}, PP v1)"
 echo "  节点 C node_id: ${NODE_C_ID}  (WS  客户端, 走 :${HAPROXY_WS_PORT})"
 echo ""
 
@@ -80,6 +88,8 @@ echo "${PEERS_JSON}" | jq -r '.result[] | "\(.node_id)|\(.addresses | map(.addre
     # 判断是哪个节点
     if [ "${pid}" = "${NODE_A_ID}" ]; then
         LABEL="节点 A (TCP / Proxy Protocol v2)"
+    elif [ "${pid}" = "${NODE_D_ID}" ]; then
+        LABEL="节点 D (TCP / Proxy Protocol v1)"
     elif [ "${pid}" = "${NODE_C_ID}" ]; then
         LABEL="节点 C (WS / X-Forwarded-For)"
     else
@@ -100,9 +110,9 @@ echo "${PEERS_JSON}" | jq -r '.result[] | "\(.node_id)|\(.addresses | map(.addre
         echo "    地址: ${addr}"
         echo "    解析: IP=${IP}  端口=${PORT}"
 
-        if [ "${PORT}" = "${HAPROXY_TCP_PORT}" ] || [ "${PORT}" = "${HAPROXY_WS_PORT}" ]; then
+        if [ "${PORT}" = "${HAPROXY_TCP_PORT}" ] || [ "${PORT}" = "${HAPROXY_TCP_V1_PORT}" ] || [ "${PORT}" = "${HAPROXY_WS_PORT}" ]; then
             echo "    ❌ 端口 ${PORT} 是 HAProxy 代理端口 -> 代理头未生效"
-        elif [ "${PORT}" = "${NODE_A_LISTEN_PORT}" ] || [ "${PORT}" = "${NODE_C_LISTEN_PORT}" ]; then
+        elif [ "${PORT}" = "${NODE_A_LISTEN_PORT}" ] || [ "${PORT}" = "${NODE_C_LISTEN_PORT}" ] || [ "${PORT}" = "${NODE_D_LISTEN_PORT}" ]; then
             echo "    ⚠️  端口 ${PORT} 是节点的 P2P 监听端口（可能是 identify 上报的）"
         else
             echo "    ✅ 端口 ${PORT} 是随机源端口 -> 代理头正确传递了真实源端口"
@@ -122,7 +132,7 @@ done
 # -------------------------------------------
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo " 检查 3: 区块同步状态（三节点）"
+echo " 检查 3: 区块同步状态（四节点）"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 TIP_B=$(curl -s -X POST http://127.0.0.1:8114 \
@@ -140,17 +150,23 @@ TIP_C=$(curl -s -X POST http://127.0.0.1:8134 \
     -d '{"id":1,"jsonrpc":"2.0","method":"get_tip_block_number","params":[]}' \
     | jq -r '.result')
 
+TIP_D=$(curl -s -X POST http://127.0.0.1:8144 \
+    -H 'Content-Type: application/json' \
+    -d '{"id":1,"jsonrpc":"2.0","method":"get_tip_block_number","params":[]}' \
+    | jq -r '.result')
+
 echo "  节点 B tip: ${TIP_B}"
 echo "  节点 A tip: ${TIP_A}"
+echo "  节点 D tip: ${TIP_D}"
 echo "  节点 C tip: ${TIP_C}"
 
-if [ "${TIP_B}" = "${TIP_A}" ] && [ "${TIP_B}" = "${TIP_C}" ]; then
-    echo "  ✅ PASS: 三个节点 tip 一致，同步正常"
+if [ "${TIP_B}" = "${TIP_A}" ] && [ "${TIP_B}" = "${TIP_C}" ] && [ "${TIP_B}" = "${TIP_D}" ]; then
+    echo "  ✅ PASS: 四个节点 tip 一致，同步正常"
     PASS=$((PASS + 1))
-elif [ "${TIP_B}" = "${TIP_A}" ] || [ "${TIP_B}" = "${TIP_C}" ]; then
+elif [ "${TIP_B}" = "${TIP_A}" ] || [ "${TIP_B}" = "${TIP_C}" ] || [ "${TIP_B}" = "${TIP_D}" ]; then
     echo "  ⚠️  部分节点 tip 不一致 (可能还在同步中)"
 else
-    echo "  ⚠️  三个节点 tip 都不一致 (可能还在同步中)"
+    echo "  ⚠️  四个节点 tip 都不一致 (可能还在同步中)"
 fi
 
 # -------------------------------------------
@@ -211,6 +227,37 @@ elif [ "${TCP_PORT}" = "${HAPROXY_TCP_PORT}" ]; then
 else
     echo "  ✅ PASS: 端口 ${TCP_PORT} 是随机源端口（非 ${HAPROXY_TCP_PORT}）"
     echo "     -> Proxy Protocol v2 正确传递了客户端真实源端口"
+    PASS=$((PASS + 1))
+fi
+
+# -------------------------------------------
+# 检查 5b: TCP 路径验证 (Proxy Protocol v1)
+# -------------------------------------------
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo " 检查 5b: TCP 路径 — Proxy Protocol v1"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+TCP_V1_PEER_ADDR=$(echo "${PEERS_JSON}" | jq -r --arg id "${NODE_D_ID}" \
+    '.result[] | select(.node_id == $id) | .addresses[0].address // "无"' 2>/dev/null)
+TCP_V1_PORT=$(echo "${TCP_V1_PEER_ADDR}" | sed -n 's|.*/tcp/\([^/]*\).*|\1|p')
+
+echo "  节点 D (TCP/PP v1 客户端) 在节点 B 视角的地址:"
+echo "    ${TCP_V1_PEER_ADDR}"
+echo "    端口: ${TCP_V1_PORT:-无}"
+echo ""
+
+if [ -z "${TCP_V1_PORT}" ]; then
+    echo "  ❌ FAIL: 节点 B 没有看到节点 D 的连接 (TCP/PP v1 路径)"
+    echo "     可能节点 D 还没连上，稍等重试"
+    FAIL=$((FAIL + 1))
+elif [ "${TCP_V1_PORT}" = "${HAPROXY_TCP_V1_PORT}" ]; then
+    echo "  ❌ FAIL: 端口 ${TCP_V1_PORT} 是 HAProxy TCP v1 代理端口"
+    echo "     -> Proxy Protocol v1 未生效"
+    FAIL=$((FAIL + 1))
+else
+    echo "  ✅ PASS: 端口 ${TCP_V1_PORT} 是随机源端口（非 ${HAPROXY_TCP_V1_PORT}）"
+    echo "     -> Proxy Protocol v1 正确传递了客户端真实源端口"
     PASS=$((PASS + 1))
 fi
 
@@ -326,8 +373,12 @@ echo "  节点 B (服务端):"
 echo "    node_id: ${NODE_B_ID}"
 
 echo ""
-echo "  节点 A (TCP 客户端, bootnode -> :${HAPROXY_TCP_PORT}):"
+echo "  节点 A (TCP/PP v2 客户端, bootnode -> :${HAPROXY_TCP_PORT}):"
 echo "    node_id: ${NODE_A_ID}"
+
+echo ""
+echo "  节点 D (TCP/PP v1 客户端, bootnode -> :${HAPROXY_TCP_V1_PORT}):"
+echo "    node_id: ${NODE_D_ID}"
 
 echo ""
 echo "  节点 C (WS 客户端, bootnode -> :${HAPROXY_WS_PORT}/ws):"
@@ -335,8 +386,8 @@ echo "    node_id: ${NODE_C_ID}"
 
 echo ""
 echo "  --- 节点 B 看到的 peers ---"
-echo "${PEERS_JSON}" | jq -r --arg aid "${NODE_A_ID}" --arg cid "${NODE_C_ID}" \
-    '.result[] | "    peer: \(.node_id) [\(if .node_id == $aid then "TCP/节点A" elif .node_id == $cid then "WS/节点C" else "未知" end)]\n    方向: \(if .is_outbound then "出站" else "入站" end)\n    连接时长: \(.connected_duration)\n    地址: \(.addresses | map(.address) | join(", "))\n    协议: \([.protocols[] | "\(.name)(\(.id))"] | join(", "))\n"' 2>/dev/null
+echo "${PEERS_JSON}" | jq -r --arg aid "${NODE_A_ID}" --arg cid "${NODE_C_ID}" --arg did "${NODE_D_ID}" \
+    '.result[] | "    peer: \(.node_id) [\(if .node_id == $aid then "TCP-v2/节点A" elif .node_id == $did then "TCP-v1/节点D" elif .node_id == $cid then "WS/节点C" else "未知" end)]\n    方向: \(if .is_outbound then "出站" else "入站" end)\n    连接时长: \(.connected_duration)\n    地址: \(.addresses | map(.address) | join(", "))\n    协议: \([.protocols[] | "\(.name)(\(.id))"] | join(", "))\n"' 2>/dev/null
 
 # -------------------------------------------
 # 总结
@@ -350,8 +401,8 @@ echo "  失败: ${FAIL}"
 echo ""
 
 TOTAL=$((PASS + FAIL))
-if [ "${FAIL}" -eq 0 ] && [ "${PASS}" -ge 5 ]; then
-    echo "  🎉 所有检查通过！TCP + WS 两条代理路径均已验证"
+if [ "${FAIL}" -eq 0 ] && [ "${PASS}" -ge 6 ]; then
+    echo "  🎉 所有检查通过！TCP (PP v2 + PP v1) + WS 三条代理路径均已验证"
 elif [ "${FAIL}" -eq 0 ] && [ "${PASS}" -gt 0 ]; then
     echo "  ✅ 已通过的检查无失败，但部分检查未计分 (可能还在同步中)"
 else
@@ -360,11 +411,12 @@ fi
 
 echo ""
 echo "  📌 补充说明:"
-echo "     * TCP 路径:  节点 A -> HAProxy :${HAPROXY_TCP_PORT} (send-proxy-v2) -> 节点 B :8115"
-echo "     * WS  路径:  节点 C -> HAProxy :${HAPROXY_WS_PORT} (X-Forwarded-For + X-Forwarded-Port) -> 节点 B :8115"
+echo "     * TCP v2 路径: 节点 A -> HAProxy :${HAPROXY_TCP_PORT} (send-proxy-v2) -> 节点 B :8115"
+echo "     * TCP v1 路径: 节点 D -> HAProxy :${HAPROXY_TCP_V1_PORT} (send-proxy v1) -> 节点 B :8115"
+echo "     * WS  路径:    节点 C -> HAProxy :${HAPROXY_WS_PORT} (X-Forwarded-For + X-Forwarded-Port) -> 节点 B :8115"
 echo "     * HAProxy 在 Docker 中运行时，节点 B 看到的 IP 是 Docker 网关 (192.168.65.1)"
 echo "       这是 Docker Desktop macOS 的网络机制，不影响功能验证"
-echo "     * 关键看端口: 应该是随机高位端口，而不是 HAProxy 的 ${HAPROXY_TCP_PORT}/${HAPROXY_WS_PORT}"
+echo "     * 关键看端口: 应该是随机高位端口，而不是 HAProxy 的 ${HAPROXY_TCP_PORT}/${HAPROXY_TCP_V1_PORT}/${HAPROXY_WS_PORT}"
 echo "=========================================="
 
 exit "${FAIL}"
