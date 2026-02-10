@@ -110,6 +110,7 @@ frontend ws_proxy
 
 backend ws_backend
     mode http
+    source 127.0.0.2
     option forwardfor
     http-request set-header X-Forwarded-Port %[src_port]
     server ckb 127.0.0.1:8115
