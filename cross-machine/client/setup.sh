@@ -72,8 +72,6 @@ rm -rf "${BASE_DIR}/node_a/data"
 
 # bootnode 指向服务端 HAProxy TCP 端口
 sed -i "s|^bootnodes = .*|bootnodes = [\"/ip4/${SERVER_IP}/tcp/8230/p2p/${NODE_B_PEER_ID}\"]|" ckb.toml
-# 仅监听本机，防止 Node B 通过发现协议反向直连
-sed -i 's|/ip4/0.0.0.0/|/ip4/127.0.0.1/|' ckb.toml
 
 # --- 初始化节点 C (WS 客户端) ---
 echo ""
@@ -86,8 +84,6 @@ rm -rf "${BASE_DIR}/node_c/data"
 
 # bootnode 指向服务端 HAProxy WS 端口
 sed -i "s|^bootnodes = .*|bootnodes = [\"/ip4/${SERVER_IP}/tcp/8231/ws/p2p/${NODE_B_PEER_ID}\"]|" ckb.toml
-# 仅监听本机，防止 Node B 通过发现协议反向直连
-sed -i 's|/ip4/0.0.0.0/|/ip4/127.0.0.1/|' ckb.toml
 
 # --- 初始化节点 D (TCP/PP v1 客户端) ---
 echo ""
@@ -100,8 +96,6 @@ rm -rf "${BASE_DIR}/node_d/data"
 
 # bootnode 指向服务端 HAProxy TCP v1 端口
 sed -i "s|^bootnodes = .*|bootnodes = [\"/ip4/${SERVER_IP}/tcp/8232/p2p/${NODE_B_PEER_ID}\"]|" ckb.toml
-# 仅监听本机，防止 Node B 通过发现协议反向直连
-sed -i 's|/ip4/0.0.0.0/|/ip4/127.0.0.1/|' ckb.toml
 
 # 确保两个客户端与服务端使用相同的 genesis (需从服务端复制 dev.toml)
 DEV_TOML_SRC="${BASE_DIR}/.dev.toml"

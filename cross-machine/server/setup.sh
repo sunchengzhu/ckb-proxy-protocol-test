@@ -57,6 +57,9 @@ sed -i 's/value = 5000/value = 500/' ckb-miner.toml
 # 让 RPC 监听所有接口（跨机需要远程访问）
 sed -i 's/listen_address = "127.0.0.1:8114"/listen_address = "0.0.0.0:8114"/' ckb.toml
 
+# 禁止 Node B 主动向外连接，防止通过发现协议反向直连客户端（绕过 HAProxy）
+sed -i 's/max_outbound_peers = 8/max_outbound_peers = 0/' ckb.toml
+
 # 生成 secret_key
 mkdir -p "${BASE_DIR}/node_b/data/network"
 ${CKB_BIN} peer-id gen --secret-path "${BASE_DIR}/node_b/data/network/secret_key"
