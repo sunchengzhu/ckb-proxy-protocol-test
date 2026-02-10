@@ -121,7 +121,7 @@ rm -rf node_a node_b node_c node_d node_a.log node_b.log node_c.log node_d.log m
 
 [cross-machine](https://github.com/sunchengzhu/ckb-proxy-protocol-test/tree/main/cross-machine)
 
-跨机测试的 HAProxy 代理端口使用 **8230** (TCP) 和 **8231** (WS)，与同机测试不同。
+跨机测试的 HAProxy 代理端口使用 **8230** (TCP v2)、**8232** (TCP v1) 和 **8231** (WS)，与同机测试不同。
 
 ## check.sh 输出示例
 

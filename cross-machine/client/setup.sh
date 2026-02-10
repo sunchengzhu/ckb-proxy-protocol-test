@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ============================================
-# 跨机测试 — 客户端 (Node A + Node C)
+# 跨机测试 — 客户端 (Node A + Node C + Node D)
 # 在 Ubuntu 22 客户端机器上运行
 #
 # 前提:
@@ -63,7 +63,7 @@ DEV_BA_ARG="0xc8328aabcd9b9e8e64fbc566c4385c3bdeb219d7"
 
 # --- 初始化节点 A (TCP 客户端) ---
 echo ""
-echo "[1/2] 初始化节点 A (TCP 客户端) ..."
+echo "[1/3] 初始化节点 A (TCP/PP v2 客户端) ..."
 rm -rf "${BASE_DIR}/node_a"
 mkdir -p "${BASE_DIR}/node_a"
 cd "${BASE_DIR}/node_a"
@@ -75,7 +75,7 @@ sed -i "s|^bootnodes = .*|bootnodes = [\"/ip4/${SERVER_IP}/tcp/8230/p2p/${NODE_B
 
 # --- 初始化节点 C (WS 客户端) ---
 echo ""
-echo "[2/2] 初始化节点 C (WS 客户端) ..."
+echo "[2/3] 初始化节点 C (WS 客户端) ..."
 rm -rf "${BASE_DIR}/node_c"
 mkdir -p "${BASE_DIR}/node_c"
 cd "${BASE_DIR}/node_c"
@@ -85,6 +85,18 @@ rm -rf "${BASE_DIR}/node_c/data"
 # bootnode 指向服务端 HAProxy WS 端口
 sed -i "s|^bootnodes = .*|bootnodes = [\"/ip4/${SERVER_IP}/tcp/8231/ws/p2p/${NODE_B_PEER_ID}\"]|" ckb.toml
 
+# --- 初始化节点 D (TCP/PP v1 客户端) ---
+echo ""
+echo "[3/3] 初始化节点 D (TCP/PP v1 客户端) ..."
+rm -rf "${BASE_DIR}/node_d"
+mkdir -p "${BASE_DIR}/node_d"
+cd "${BASE_DIR}/node_d"
+${CKB_BIN} init -c dev --p2p-port 8118 --rpc-port 8144 --force 2>&1 | tail -3 || true
+rm -rf "${BASE_DIR}/node_d/data"
+
+# bootnode 指向服务端 HAProxy TCP v1 端口
+sed -i "s|^bootnodes = .*|bootnodes = [\"/ip4/${SERVER_IP}/tcp/8232/p2p/${NODE_B_PEER_ID}\"]|" ckb.toml
+
 # 确保两个客户端与服务端使用相同的 genesis (需从服务端复制 dev.toml)
 DEV_TOML_SRC="${BASE_DIR}/.dev.toml"
 if [ -f "${DEV_TOML_SRC}" ]; then
@@ -92,6 +104,7 @@ if [ -f "${DEV_TOML_SRC}" ]; then
     echo "  发现 .dev.toml，复制到客户端节点 ..."
     cp "${DEV_TOML_SRC}" "${BASE_DIR}/node_a/specs/dev.toml"
     cp "${DEV_TOML_SRC}" "${BASE_DIR}/node_c/specs/dev.toml"
+    cp "${DEV_TOML_SRC}" "${BASE_DIR}/node_d/specs/dev.toml"
 else
     echo ""
     echo "  ⚠️  未找到 .dev.toml (从服务端复制的 specs/dev.toml)"
@@ -105,10 +118,13 @@ echo "=========================================="
 echo " 客户端初始化完成！"
 echo "=========================================="
 echo ""
-echo "  节点 A (TCP): P2P=8116  RPC=8124"
+echo "  节点 A (TCP/PP v2): P2P=8116  RPC=8124"
 echo "    bootnode: TCP -> ${SERVER_IP}:8230 (Proxy Protocol v2)"
 echo ""
 echo "  节点 C (WS):  P2P=8117  RPC=8134"
 echo "    bootnode: WS  -> ${SERVER_IP}:8231 (X-Forwarded-For/Port)"
+echo ""
+echo "  节点 D (TCP/PP v1): P2P=8118  RPC=8144"
+echo "    bootnode: TCP -> ${SERVER_IP}:8232 (Proxy Protocol v1)"
 echo ""
 echo "  下一步: bash start.sh"

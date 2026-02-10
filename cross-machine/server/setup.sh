@@ -91,6 +91,14 @@ frontend tcp_proxy
 backend tcp_backend
     server ckb 127.0.0.1:8115 send-proxy-v2
 
+# TCP 代理 - PROXY Protocol v1
+frontend tcp_proxy_v1
+    bind *:8232
+    default_backend tcp_backend_v1
+
+backend tcp_backend_v1
+    server ckb 127.0.0.1:8115 send-proxy
+
 # WebSocket 代理 - X-Forwarded-For + X-Forwarded-Port
 frontend ws_proxy
     bind *:8231
@@ -113,7 +121,10 @@ echo "=========================================="
 echo ""
 echo "  节点 B: P2P=8115  RPC=0.0.0.0:8114"
 echo "  peer_id: ${NODE_B_PEER_ID}"
-echo "  HAProxy: TCP=8230 (proxy-v2)  WS=8231 (X-Fwd-For/Port)"
+echo "  HAProxy: TCP-v2=8230  TCP-v1=8232  WS=8231"
+echo ""
+echo ""
+echo "  ⚠️  确保防火墙/安全组放行端口: 8114, 8230, 8231, 8232"
 echo ""
 echo "  ⚠️  请将 peer_id 传递给客户端机器:"
 echo "     echo '${NODE_B_PEER_ID}' > .node_b_peer_id"
