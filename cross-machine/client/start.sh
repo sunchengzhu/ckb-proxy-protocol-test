@@ -33,6 +33,18 @@ for PID_FILE in "${BASE_DIR}/.node_a_pid" "${BASE_DIR}/.node_c_pid" "${BASE_DIR}
 done
 pkill -f "ckb run" 2>/dev/null || true
 
+# 等待服务端旧 session 清理
+# HAProxy HTTP 模式（WS 隧道）的断开传播比 TCP 模式慢，
+# 如果在 Node B 清理旧 session 前就重连，会被 PeerIdExists 拒绝
+echo "  等待服务端旧连接清理 ..."
+sleep 3
+
+# 清理 WS 节点的 peer_store
+# peer_store 的 base_addr() 会剥离 /ws 后缀，导致重连时
+# 使用 TCP 传输连接 HAProxy HTTP 端口，永远无法成功
+echo "  清理 WS 节点 peer_store ..."
+rm -rf "${BASE_DIR}/node_c/data/network/peer_store"
+
 # [1/2] 启动节点 A (TCP)
 echo ""
 echo "[1/3] 启动节点 A (TCP/PP v2 客户端) ..."

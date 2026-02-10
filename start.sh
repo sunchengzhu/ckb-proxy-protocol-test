@@ -50,6 +50,11 @@ done
 pkill -f "ckb run" 2>/dev/null || true
 sleep 1
 
+# 清理 WS 节点的 peer_store
+# peer_store 的 base_addr() 会剥离 /ws 后缀，导致重连时
+# 使用 TCP 传输连接 HAProxy HTTP 端口，永远无法成功
+rm -rf "${BASE_DIR}/node_c/data/network/peer_store"
+
 docker rm -f haproxy-ckb-test 2>/dev/null || true
 
 # --- 1. 启动 HAProxy ---
