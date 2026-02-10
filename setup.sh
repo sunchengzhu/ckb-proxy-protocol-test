@@ -44,7 +44,7 @@ echo ""
 # 使用 dev chain 测试用 lock arg 初始化（需要 --ba-arg 才能启用 Miner RPC）
 DEV_BA_ARG="0xc8328aabcd9b9e8e64fbc566c4385c3bdeb219d7"
 
-echo "[1/4] 初始化节点 B (服务端) ..."
+echo "[1/5] 初始化节点 B (服务端) ..."
 rm -rf "${BASE_DIR}/node_b"
 mkdir -p "${BASE_DIR}/node_b"
 cd "${BASE_DIR}/node_b"
@@ -71,7 +71,7 @@ echo "  节点 B peer_id: ${NODE_B_PEER_ID}"
 
 # --- 初始化节点 A-TCP (通过 TCP 代理连接) ---
 echo ""
-echo "[2/4] 初始化节点 A (TCP 客户端) ..."
+echo "[2/5] 初始化节点 A (TCP 客户端) ..."
 rm -rf "${BASE_DIR}/node_a"
 mkdir -p "${BASE_DIR}/node_a"
 cd "${BASE_DIR}/node_a"
@@ -90,7 +90,7 @@ fi
 
 # --- 初始化节点 C (WS 客户端，通过 WebSocket 代理连接) ---
 echo ""
-echo "[3/4] 初始化节点 C (WS 客户端) ..."
+echo "[3/5] 初始化节点 C (WS 客户端) ..."
 rm -rf "${BASE_DIR}/node_c"
 mkdir -p "${BASE_DIR}/node_c"
 cd "${BASE_DIR}/node_c"
@@ -109,7 +109,7 @@ fi
 
 # --- 初始化节点 D (TCP 客户端，通过 Proxy Protocol v1 连接) ---
 echo ""
-echo "[4/4] 初始化节点 D (TCP/PP v1 客户端) ..."
+echo "[4/5] 初始化节点 D (TCP/PP v1 客户端) ..."
 rm -rf "${BASE_DIR}/node_d"
 mkdir -p "${BASE_DIR}/node_d"
 cd "${BASE_DIR}/node_d"
@@ -124,6 +124,25 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     sed -i '' "s|^bootnodes = .*|bootnodes = [\"/ip4/127.0.0.1/tcp/18116/p2p/${NODE_B_PEER_ID}\"]|" ckb.toml
 else
     sed -i "s|^bootnodes = .*|bootnodes = [\"/ip4/127.0.0.1/tcp/18116/p2p/${NODE_B_PEER_ID}\"]|" ckb.toml
+fi
+
+# --- 初始化节点 E (TCP 客户端，通过 HAProxy 无协议转发) ---
+echo ""
+echo "[5/5] 初始化节点 E (TCP 无协议客户端) ..."
+rm -rf "${BASE_DIR}/node_e"
+mkdir -p "${BASE_DIR}/node_e"
+cd "${BASE_DIR}/node_e"
+${CKB_BIN} init -c dev --p2p-port 8119 --rpc-port 8154 --force 2>&1 | tail -3 || true
+
+cp "${BASE_DIR}/node_b/specs/dev.toml" "${BASE_DIR}/node_e/specs/dev.toml"
+rm -rf "${BASE_DIR}/node_e/data"
+
+# 节点 E 走 TCP 代理但不加任何协议头 (HAProxy :18117 -> :8115, 无 send-proxy)
+cd "${BASE_DIR}/node_e"
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    sed -i '' "s|^bootnodes = .*|bootnodes = [\"/ip4/127.0.0.1/tcp/18117/p2p/${NODE_B_PEER_ID}\"]|" ckb.toml
+else
+    sed -i "s|^bootnodes = .*|bootnodes = [\"/ip4/127.0.0.1/tcp/18117/p2p/${NODE_B_PEER_ID}\"]|" ckb.toml
 fi
 
 # 保存 peer_id 供后续使用
@@ -153,5 +172,10 @@ echo "  节点 D (TCP/PP v1 客户端): ${BASE_DIR}/node_d"
 echo "    - P2P 监听: 8118"
 echo "    - RPC 端口: 8144"
 echo "    - bootnode: TCP -> 127.0.0.1:18116 (HAProxy, Proxy Protocol v1)"
+echo ""
+echo "  节点 E (TCP 无协议客户端): ${BASE_DIR}/node_e"
+echo "    - P2P 监听: 8119"
+echo "    - RPC 端口: 8154"
+echo "    - bootnode: TCP -> 127.0.0.1:18117 (HAProxy, 无协议 — 向后兼容测试)"
 echo ""
 echo "  下一步: bash start.sh"

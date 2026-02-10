@@ -31,6 +31,14 @@ if [ -f "${BASE_DIR}/.node_d_pid" ]; then
     rm -f "${BASE_DIR}/.node_d_pid"
 fi
 
+# 停止节点 E
+if [ -f "${BASE_DIR}/.node_e_pid" ]; then
+    PID=$(cat "${BASE_DIR}/.node_e_pid")
+    echo "  停止节点 E (PID: ${PID}) ..."
+    kill "${PID}" 2>/dev/null || true
+    rm -f "${BASE_DIR}/.node_e_pid"
+fi
+
 # 停止节点 B
 if [ -f "${BASE_DIR}/.node_b_pid" ]; then
     PID=$(cat "${BASE_DIR}/.node_b_pid")
@@ -56,4 +64,4 @@ rm -f "${BASE_DIR}/.haproxy.darwin.cfg"
 echo ""
 echo "  全部停止 ✓"
 echo ""
-echo "  如需清理数据: rm -rf node_a node_b node_c node_d node_a.log node_b.log node_c.log node_d.log miner.log .node_* .haproxy.darwin.cfg"
+echo "  如需清理数据: rm -rf node_a node_b node_c node_d node_e node_a.log node_b.log node_c.log node_d.log node_e.log miner.log .node_* .haproxy.darwin.cfg"

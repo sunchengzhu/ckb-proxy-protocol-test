@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ============================================
-# 跨机测试 — 客户端 (Node A + Node C + Node D)
+# 跨机测试 — 客户端 (Node A + Node C + Node D + Node E)
 # 在 Ubuntu 22 客户端机器上运行
 #
 # 前提:
@@ -63,7 +63,7 @@ DEV_BA_ARG="0xc8328aabcd9b9e8e64fbc566c4385c3bdeb219d7"
 
 # --- 初始化节点 A (TCP 客户端) ---
 echo ""
-echo "[1/3] 初始化节点 A (TCP/PP v2 客户端) ..."
+echo "[1/4] 初始化节点 A (TCP/PP v2 客户端) ..."
 rm -rf "${BASE_DIR}/node_a"
 mkdir -p "${BASE_DIR}/node_a"
 cd "${BASE_DIR}/node_a"
@@ -75,7 +75,7 @@ sed -i "s|^bootnodes = .*|bootnodes = [\"/ip4/${SERVER_IP}/tcp/8230/p2p/${NODE_B
 
 # --- 初始化节点 C (WS 客户端) ---
 echo ""
-echo "[2/3] 初始化节点 C (WS 客户端) ..."
+echo "[2/4] 初始化节点 C (WS 客户端) ..."
 rm -rf "${BASE_DIR}/node_c"
 mkdir -p "${BASE_DIR}/node_c"
 cd "${BASE_DIR}/node_c"
@@ -87,7 +87,7 @@ sed -i "s|^bootnodes = .*|bootnodes = [\"/ip4/${SERVER_IP}/tcp/8231/ws/p2p/${NOD
 
 # --- 初始化节点 D (TCP/PP v1 客户端) ---
 echo ""
-echo "[3/3] 初始化节点 D (TCP/PP v1 客户端) ..."
+echo "[3/4] 初始化节点 D (TCP/PP v1 客户端) ..."
 rm -rf "${BASE_DIR}/node_d"
 mkdir -p "${BASE_DIR}/node_d"
 cd "${BASE_DIR}/node_d"
@@ -97,6 +97,18 @@ rm -rf "${BASE_DIR}/node_d/data"
 # bootnode 指向服务端 HAProxy TCP v1 端口
 sed -i "s|^bootnodes = .*|bootnodes = [\"/ip4/${SERVER_IP}/tcp/8232/p2p/${NODE_B_PEER_ID}\"]|" ckb.toml
 
+# --- 初始化节点 E (TCP 无协议客户端) ---
+echo ""
+echo "[4/4] 初始化节点 E (TCP 无协议客户端) ..."
+rm -rf "${BASE_DIR}/node_e"
+mkdir -p "${BASE_DIR}/node_e"
+cd "${BASE_DIR}/node_e"
+${CKB_BIN} init -c dev --p2p-port 8119 --rpc-port 8154 --force 2>&1 | tail -3 || true
+rm -rf "${BASE_DIR}/node_e/data"
+
+# bootnode 指向服务端 HAProxy TCP 无协议端口
+sed -i "s|^bootnodes = .*|bootnodes = [\"/ip4/${SERVER_IP}/tcp/8233/p2p/${NODE_B_PEER_ID}\"]|" ckb.toml
+
 # 确保两个客户端与服务端使用相同的 genesis (需从服务端复制 dev.toml)
 DEV_TOML_SRC="${BASE_DIR}/.dev.toml"
 if [ -f "${DEV_TOML_SRC}" ]; then
@@ -105,6 +117,7 @@ if [ -f "${DEV_TOML_SRC}" ]; then
     cp "${DEV_TOML_SRC}" "${BASE_DIR}/node_a/specs/dev.toml"
     cp "${DEV_TOML_SRC}" "${BASE_DIR}/node_c/specs/dev.toml"
     cp "${DEV_TOML_SRC}" "${BASE_DIR}/node_d/specs/dev.toml"
+    cp "${DEV_TOML_SRC}" "${BASE_DIR}/node_e/specs/dev.toml"
 else
     echo ""
     echo "  ⚠️  未找到 .dev.toml (从服务端复制的 specs/dev.toml)"
@@ -126,5 +139,8 @@ echo "    bootnode: WS  -> ${SERVER_IP}:8231 (X-Forwarded-For/Port)"
 echo ""
 echo "  节点 D (TCP/PP v1): P2P=8118  RPC=8144"
 echo "    bootnode: TCP -> ${SERVER_IP}:8232 (Proxy Protocol v1)"
+echo ""
+echo "  节点 E (TCP/无协议): P2P=8119  RPC=8154"
+echo "    bootnode: TCP -> ${SERVER_IP}:8233 (无协议 — 向后兼容测试)"
 echo ""
 echo "  下一步: bash start.sh"

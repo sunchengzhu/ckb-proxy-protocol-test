@@ -113,6 +113,14 @@ backend ws_backend
     option forwardfor
     http-request set-header X-Forwarded-Port %[src_port]
     server ckb 127.0.0.1:8115
+
+# TCP 代理 - 无 Proxy Protocol（向后兼容测试）
+frontend tcp_proxy_plain
+    bind *:8233
+    default_backend tcp_backend_plain
+
+backend tcp_backend_plain
+    server ckb 127.0.0.1:8115
 HAPROXY_EOF
 
 echo "  haproxy.cfg 已生成: ${BASE_DIR}/haproxy.cfg"
@@ -124,10 +132,10 @@ echo "=========================================="
 echo ""
 echo "  节点 B: P2P=8115  RPC=0.0.0.0:8114"
 echo "  peer_id: ${NODE_B_PEER_ID}"
-echo "  HAProxy: TCP-v2=8230  TCP-v1=8232  WS=8231"
+echo "  HAProxy: TCP-v2=8230  TCP-v1=8232  TCP-无协议=8233  WS=8231"
 echo ""
 echo ""
-echo "  ⚠️  确保防火墙/安全组放行端口: 8114, 8230, 8231, 8232"
+echo "  ⚠️  确保防火墙/安全组放行端口: 8114, 8230-8233"
 echo ""
 echo "  ⚠️  请将 peer_id 传递给客户端机器:"
 echo "     echo '${NODE_B_PEER_ID}' > .node_b_peer_id"

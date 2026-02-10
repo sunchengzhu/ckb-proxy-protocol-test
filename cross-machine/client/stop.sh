@@ -31,9 +31,17 @@ if [ -f "${BASE_DIR}/.node_d_pid" ]; then
     rm -f "${BASE_DIR}/.node_d_pid"
 fi
 
+# 停止节点 E
+if [ -f "${BASE_DIR}/.node_e_pid" ]; then
+    PID=$(cat "${BASE_DIR}/.node_e_pid")
+    echo "  停止节点 E (PID: ${PID}) ..."
+    kill "${PID}" 2>/dev/null || true
+    rm -f "${BASE_DIR}/.node_e_pid"
+fi
+
 # 兜底清理
 pkill -f "ckb run" 2>/dev/null || true
 
 echo ""
 echo "  ✓ 客户端已停止"
-echo "  如需清理数据: rm -rf node_a node_c node_d node_a.log node_c.log node_d.log .node_* .dev.toml"
+echo "  如需清理数据: rm -rf node_a node_c node_d node_e node_a.log node_c.log node_d.log node_e.log .node_* .dev.toml"
